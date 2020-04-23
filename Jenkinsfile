@@ -18,7 +18,7 @@ properties(
                     $class: 'FedMsgSubscriberProviderData',
                     name: 'fedora-fedmsg',
                     overrides: [
-                        topic: 'bodhi.update.status.testing.koji-build-group.build.complete'
+                        topic: 'org.fedoraproject.prod.bodhi.update.status.testing.koji-build-group.build.complete'
                     ],
                     checks: [
                         [field: '$.artifact.builds', expectedValue: '.*"nvr".*"nvr".*'],
@@ -42,7 +42,8 @@ pipeline {
     stages {
         stage('Create Collection in Koschei') {
             steps {
-                sh "./create-koschei-collection.sh ${sidetag}"
+                echo "Fantastic!!! Triggered!!!"
+                // sh "./create-koschei-collection.sh ${sidetag}"
             }
         }
     }
