@@ -1,28 +1,22 @@
 #!groovy
 
-@Library('fedora-pipeline-library@prototype') _
-
+import groovy.json.JsonSlurper
 
 properties(
     [
-        parameters(
-            [
-                string(description: 'CI message', defaultValue: '', name: 'CI_MESSAGE'),
-                string(description: 'SideTag name', defaultValue: '', name: 'SIDETAG_NAME')
-            ]
-        ),
         pipelineTriggers(
             [[$class: 'CIBuildTrigger',
                 noSquash: true,
                 providerData: [
-                    $class: 'FedMsgSubscriberProviderData',
-                    name: 'fedora-fedmsg',
+                    $class: 'RabbitMQSubscriberProviderData',
+                    name: 'FedoraMessaging',
                     overrides: [
-                        topic: 'org.fedoraproject.prod.bodhi.update.status.testing.koji-build-group.build.complete'
+                        topic: 'org.fedoraproject.prod.bodhi.update.status.testing.koji-build-group.build.complete',
+                        queue: ''
                     ],
                     checks: [
-                        [field: '$.artifact.builds', expectedValue: '.*"nvr".*"nvr".*'],
-                        [field: '$.artifact.release', expectedValue: 'f33'],
+                        [field: '$.artifact.builds', expectedValue: '.*"nvr".*"nvr".*']
+                        // [field: '$.artifact.release', expectedValue: 'f33'],
                     ]
                 ]
             ]]
@@ -30,21 +24,24 @@ properties(
     ]
 )
 
+node('master') {
 
-def sidetag = env.SIDETAG_NAME
+    print("CI: $CI_MESSAGE")
 
-pipeline {
+    def slurper = new JsonSlurper()
+    def parsed_ci_message = slurper.parseText(CI_MESSAGE)
 
-    agent {
-        label 'fedora-ci-agent'
-    }
+    def artifact_id = parsed_ci_message.artifact.id[0..21]
+    print("Artifact_id: $artifact_id")
 
-    stages {
-        stage('Create Collection in Koschei') {
-            steps {
-                echo "Fantastic!!! Triggered!!!"
-                // sh "./create-koschei-collection.sh ${sidetag}"
-            }
-        }
-    }
+    def command = "curl https://bodhi.fedoraproject.org/updates/${artifact_id}"
+
+    print( command )
+
+    def proc = command.execute()
+    proc.waitFor()
+    def parsed_curl_output = slurper.parseText(proc.in.text)
+    def side_tag = parsed_curl_output.update.from_tag
+
+    println("\n\nSide tag: ${side_tag}\n\n" )
 }
