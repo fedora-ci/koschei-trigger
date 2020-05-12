@@ -15,8 +15,8 @@ properties(
                         queue: ''
                     ],
                     checks: [
-                        [field: '$.artifact.builds', expectedValue: '.*"nvr".*"nvr".*']
-                        // [field: '$.artifact.release', expectedValue: 'f33'],
+                        [field: '$.artifact.builds', expectedValue: '.*"nvr".*"nvr".*'],
+                        [field: '$.artifact.release', expectedValue: 'f33']
                     ]
                 ]
             ]]
@@ -27,21 +27,24 @@ properties(
 node('master') {
 
     print("CI: $CI_MESSAGE")
-
+    
     def slurper = new JsonSlurper()
     def parsed_ci_message = slurper.parseText(CI_MESSAGE)
+    def repository = parsed_ci_message.artifact.repository
 
-    def artifact_id = parsed_ci_message.artifact.id[0..21]
-    print("Artifact_id: $artifact_id")
+    print("Repository: ${repository}")
 
-    def command = "curl https://bodhi.fedoraproject.org/updates/${artifact_id}"
+    def command = "curl ${repository}"
 
-    print( command )
-
+    print("\n\nCLI command: ${command}\n\n" )
+    
     def proc = command.execute()
     proc.waitFor()
     def parsed_curl_output = slurper.parseText(proc.in.text)
+    
+    println("\n\nCurl output: ${parsed_curl_output}\n\n" )
+    
     def side_tag = parsed_curl_output.update.from_tag
-
+    
     println("\n\nSide tag: ${side_tag}\n\n" )
 }
